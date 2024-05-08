@@ -75,19 +75,12 @@
 
             let newnoOfRowsInput = newLi.querySelector("#noOfRowsInput-1");
             newnoOfRowsInput.id = 'noOfRowsInput-' + buttonCount;
-            console.log('newnoOfRowsInput', newnoOfRowsInput);
-            console.log(newnoOfRowsInput.id);
             newnoOfRowsInput.value = '';
 
 
             let timeOfGoInput = newLi.querySelector("#timeOfGoInput-1");
             timeOfGoInput.id = 'timeOfGoInput-' + buttonCount;
             timeOfGoInput.value = '';
-
-            // Enable the Submit button for the new row
-            newSubmitButton.disabled = false; // Enable the button
-
-            console.log("New row added with Submit button enabled.");
 
         }
 
@@ -101,60 +94,67 @@
 
 
         document.getElementById("gos-list").addEventListener("click", function (event) {
-            console.log("gos-list click event");
 
             var target = event.target;
             if (target.type === 'submit') {
                 let s = target.id.split('-');
-                var button = event.target;
                 let buttonCount = s[1];
                 let newnoOfRowsInput = document.getElementById('noOfRowsInput-' + buttonCount);
                 let timeOfGoInput = document.getElementById('timeOfGoInput-' + buttonCount);
 
-                data.Rows = newnoOfRowsInput.value;
-                data.time = timeOfGoInput.value;
-                console.log('data.Rows', data.Rows);
-                console.log('data.time', data.time);
+                let rowsValue = newnoOfRowsInput.value;
+                let timeValue = timeOfGoInput.value;
 
-                addTable(buttonCount);
+                let existingTableIndex = findTableByRowId(buttonCount);
+                console.log('existingTableIndex', existingTableIndex);
 
-                button.disabled = true;
+                if (existingTableIndex !== -1) {
+                    console.log('update table');
+                    updateTable(buttonCount, rowsValue, timeValue, rowDataArray[existingTableIndex].startRow);
+                } else {
+                    console.log('new table');
+                    addTable(buttonCount, rowsValue, timeValue);
+                }
             }
         });
 
-        // u.addEventListener('click', function (e) {
-        //     console.log("u click event");
+        function findTableByRowId(rowId) {
 
-        //     if (e.target.type === 'submit') {
-        //         var button = e.target;
-        //         var s = button.id.split('-');
-        //         var rowId = s[1];
-        //         const tableStartRow = addTable(rowId); // Function to add table and return start row
+            console.log('rowDataArray', rowDataArray);
+            console.log('rowId', rowId);
+            for (let i = 0; i < rowDataArray.length; i++) {
+                if (rowDataArray[i].Rows == rowId) {
+                    return i;
+                }
+            }
+            return -1;
+        }
 
-        //         
+        function updateTable(rowId, rowsValue, timeValue, startRow) {
 
-        //     }
-        // })
+            console.log("Updating existing table for row ID:", rowId);
+
+            if (startRow !== -1) {
+                onedayStructure(rowsValue, timeValue, startRow, rowId, rowsValue);
+                console.log("Table updated successfully.");
+            } else {
+                console.log("Row with ID", rowId, "not found.");
+            }
+        }
 
 
 
-        function addTable(rowId) {
-            console.log("addTable called with rowId:", rowId);
+        function addTable(rowId, rowsValue, timeValue) {
 
-            // Simulate the logic of findRowIndex (replace with your actual implementation)
             let rowIndex = findRowIndex(sheet, rowId);
-            console.log('counter in add table before', counter);
             if (rowIndex !== -1) {
-                console.log("Row with ID", rowId, "found at index", rowIndex);
-
-                let startRow = counter > 0 ? counter + 2 : 2; // Add table after previous table
-                console.log('startRow after', startRow);
-                console.log('counter in add table after', counter);
-
-                onedayStructure(data.Rows, data.time, startRow, rowId, rowsValue);
+                let startRow = counter > 0 ? counter + 2 : 2;
+                onedayStructure(rowsValue, timeValue, startRow, rowId, rowsValue);
+                console.log('rowId in addTable', rowId);
+                console.log('startrow in addTable', startRow);
                 counter = parseInt(startRow) + parseInt(data.Rows) + 1;
-
                 isInitialSetupComplete = true;
+                rowDataArray.push({ Rows: rowId, startRow: startRow });
 
             } else {
                 console.log("Row with ID", rowId, "not found.");
@@ -164,17 +164,17 @@
         function findRowIndex(sheet, rowId) {
             let rowCount = sheet.getRowCount();
             for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
-                let cellValue = sheet.getValue(rowIndex, 0); // Assuming rowId is in the first column
+                let cellValue = sheet.getValue(rowIndex, 0);
                 if (cellValue === null) {
                     console.log("Sheet is empty. Initializing data...");
-                    return 2; // Start adding data from the second row (assuming 0-based index)
+                    return 2;
                 } else if (cellValue === rowId) {
                     console.log("Row with ID", rowId, "found at index", rowIndex);
                     return rowIndex;
                 }
             }
             console.log("Row with ID", rowId, "not found.");
-            return -1; // Row not found
+            return -1;
         }
 
 
@@ -271,7 +271,7 @@
             }
             return -1;
         }
-
+        
         function addUsers() {
             if (!isInitialSetupComplete) {
                 let usersData = ["User1", "User2", "User3", "User4", "User1",
@@ -292,8 +292,6 @@
         }
 
 
-
-
         function onedayStructure(total_rows, gos_time, tot, rowId, rowsValue) {
 
             let rowCount = sheet.getRowCount();
@@ -304,6 +302,7 @@
                 deleteRows(total_rows, deleted);
 
             }
+
             let colCount = 9
             let spreadNS = GC.Spread.Sheets;
             sheet = spread.getActiveSheet();
@@ -317,7 +316,7 @@
             sheet.setValue(tot, 4, "T/O");
             sheet.setValue(tot, 5, "Area");
             sheet.setValue(tot, 6, "Status");
-            if (!isInitialSetupComplete){
+            if (!isInitialSetupComplete) {
                 sheet.setValue(tot, 7, "Users");
             }
             sheet.setValue(tot, 8, "");
@@ -329,7 +328,7 @@
             setCellTag(sheet, tot, 4, { header: true });
             setCellTag(sheet, tot, 5, { header: true });
             setCellTag(sheet, tot, 6, { header: true });
-            if (!isInitialSetupComplete){
+            if (!isInitialSetupComplete) {
 
                 setCellTag(sheet, tot, 7, { header: true });
             }
@@ -342,7 +341,7 @@
             setCellTag(sheet, tot, 4, { main_header: true, is_to: true });
             setCellTag(sheet, tot, 5, { main_header: true, is_area: true });
             setCellTag(sheet, tot, 6, { main_header: true, is_status: true });
-            if (!isInitialSetupComplete){
+            if (!isInitialSetupComplete) {
 
                 setCellTag(sheet, tot, 7, { main_header: true, is_users: true });
             }
