@@ -62,7 +62,7 @@
         let isInitialSetupComplete = false;
         function addGos() {
 
-            console.log("addGos called");
+            
             let ul = document.getElementById("gos-list");
             let existingLi = ul.querySelector("li");
             let newLi = existingLi.cloneNode(true);
@@ -106,13 +106,14 @@
                 let timeValue = timeOfGoInput.value;
 
                 let existingTableIndex = findTableByRowId(buttonCount);
-                console.log('existingTableIndex', existingTableIndex);
+                
 
                 if (existingTableIndex !== -1) {
-                    console.log('update table');
-                    updateTable(buttonCount, rowsValue, timeValue, rowDataArray[existingTableIndex].startRow);
+
+                    updateTable(buttonCount, rowsValue, timeValue, rowDataArray[existingTableIndex].startRow, rowDataArray[existingTableIndex].rowsValue);
+                    updateRowsValueInRowDataArray(buttonCount, rowsValue);
                 } else {
-                    console.log('new table');
+
                     addTable(buttonCount, rowsValue, timeValue);
                 }
             }
@@ -120,8 +121,6 @@
 
         function findTableByRowId(rowId) {
 
-            console.log('rowDataArray', rowDataArray);
-            console.log('rowId', rowId);
             for (let i = 0; i < rowDataArray.length; i++) {
                 if (rowDataArray[i].Rows == rowId) {
                     return i;
@@ -130,31 +129,63 @@
             return -1;
         }
 
-        function updateTable(rowId, rowsValue, timeValue, startRow) {
-
-            console.log("Updating existing table for row ID:", rowId);
+        function updateTable(rowId, rowsValue, timeValue, startRow, initialRowsVal) {
 
             if (startRow !== -1) {
-                onedayStructure(rowsValue, timeValue, startRow, rowId, rowsValue);
-                console.log("Table updated successfully.");
+                if (rowsValue !== undefined) {
+                    if (rowsValue < parseInt(initialRowsVal)) {
+                        let rowsToRefresh = initialRowsVal - rowsValue;
+                        
+                        let fromRow = parseInt(startRow) + parseInt(initialRowsVal) - 1;
+                        
+                        blankRows(fromRow, rowsToRefresh);
+                    }
+                    onedayStructure(rowsValue, timeValue, startRow, rowId);
+                    console.log("Table updated successfully.");
+                } else {
+                    console.log("Row with ID", rowId, "not found.");
+                }
+            }
+        }
+        function updateRowsValueInRowDataArray(rowId, newRowsValue) {
+            let indexToUpdate = rowDataArray.findIndex(item => item.Rows === rowId);
+
+            if (indexToUpdate !== -1) {
+                rowDataArray[indexToUpdate].rowsValue = newRowsValue;
+                console.log(`Updated rowsValue in rowDataArray for rowId ${rowId}.`);
             } else {
-                console.log("Row with ID", rowId, "not found.");
+                console.log(`No entry found in rowDataArray for rowId ${rowId}.`);
             }
         }
 
+        function blankRows(startRow, rowsTobeRefresh) {
+            let sheet = spread.getActiveSheet();
+            sheet.suspendPaint();
+        
+            for (let i = 0; i <= rowsTobeRefresh; i++) {
+                for (let col = 0; col < 7; col++) {
 
+                    let cell = sheet.getCell(startRow + i, col);
+                    console.log(cell);
+                    sheet.setValue(startRow + i, col, null);
+
+                    cell.cellType(null);
+                }
+            }
+
+            sheet.resumePaint();
+            console.log(`Cleared ${rowsTobeRefresh} rows till column 8.`);
+        }
 
         function addTable(rowId, rowsValue, timeValue) {
 
             let rowIndex = findRowIndex(sheet, rowId);
             if (rowIndex !== -1) {
                 let startRow = counter > 0 ? counter + 2 : 2;
-                onedayStructure(rowsValue, timeValue, startRow, rowId, rowsValue);
-                console.log('rowId in addTable', rowId);
-                console.log('startrow in addTable', startRow);
-                counter = parseInt(startRow) + parseInt(data.Rows) + 1;
+                onedayStructure(rowsValue, timeValue, startRow, rowId);
+                counter = parseInt(startRow) + parseInt(rowsValue) + 1;
                 isInitialSetupComplete = true;
-                rowDataArray.push({ Rows: rowId, startRow: startRow });
+                rowDataArray.push({ Rows: rowId, startRow: startRow, rowsValue: rowsValue });
 
             } else {
                 console.log("Row with ID", rowId, "not found.");
@@ -271,7 +302,7 @@
             }
             return -1;
         }
-        
+
         function addUsers() {
             if (!isInitialSetupComplete) {
                 let usersData = ["User1", "User2", "User3", "User4", "User1",
@@ -292,7 +323,8 @@
         }
 
 
-        function onedayStructure(total_rows, gos_time, tot, rowId, rowsValue) {
+
+        function onedayStructure(total_rows, gos_time, tot, rowId) {
 
             let rowCount = sheet.getRowCount();
             let deleted;
